@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "album-mundial",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "7026", "."],
+      "port": 7026
+    }
+  ]
+}
