@@ -472,10 +472,240 @@ const DISPLAY_NAMES = {
 };
 
 // ═══════════════════════════════════════════════
-// PLACEHOLDER — JS logic comes in Task 2
-// ═══════════════════════════���═══════════════════
-document.getElementById('mainContent').innerHTML =
-  '<p style="padding:20px;color:#888;text-align:center">App loading…</p>';
+// STATE
+// ═══════════════════════════════════════════════
+const STORAGE_KEY = 'awc_state';
+let appState = null;
+let currentView = 'album';
+let currentRegion = 'FWC';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // Deep-clone INITIAL_STATE so mutations don't affect the constant
+  return {
+    stickers:   JSON.parse(JSON.stringify(INITIAL_STATE.stickers)),
+    duplicates: JSON.parse(JSON.stringify(INITIAL_STATE.duplicates))
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+}
+
+// ═══════════════════════════════════════════════
+// HEADER
+// ═══════════════════════════════════════════════
+function updateHeader() {
+  const total = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.length, 0);               // 960
+  const have  = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+  const pct   = Math.round((have / total) * 100);
+
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent =
+    `${have} / ${total} láminas · ${pct}% completado`;
+}
+
+// ═══════════════════════════════════════════════
+// COUNTRY CARD
+// ═══════════════════════════════════════════════
+function renderCountryCard(country, mode) {
+  // mode: 'album' (toggle have/need) | 'repetidas' (toggle dup on owned stickers)
+  const stickers   = appState.stickers[country];
+  const duplicates = appState.duplicates[country];
+  const have  = stickers.filter(Boolean).length;
+  const total = stickers.length;
+  const pct   = have / total;
+
+  const badgeClass = pct >= 0.75 ? 'badge-high' : pct >= 0.25 ? 'badge-mid' : 'badge-low';
+  const displayName = DISPLAY_NAMES[country] || country;
+  const flag = FLAGS[country] || '🏳️';
+
+  // In 'repetidas' mode, only show stickers the user has
+  let chipsHtml = '';
+  for (let i = 0; i < total; i++) {
+    if (mode === 'repetidas' && !stickers[i]) continue; // skip not-owned in dup mode
+    const isDup  = duplicates[i];
+    const isHave = stickers[i];
+    const chipClass = mode === 'repetidas'
+      ? (isDup ? 'chip dup' : 'chip have')
+      : (isHave ? 'chip have' : 'chip need');
+    const handler = mode === 'repetidas'
+      ? `toggleDuplicate('${country}',${i})`
+      : `toggleSticker('${country}',${i})`;
+    chipsHtml += `<div class="${chipClass}" onclick="${handler}">${i + 1}</div>`;
+  }
+
+  if (mode === 'repetidas' && chipsHtml === '') return ''; // hide card if no owned stickers
+
+  return `
+    <div class="country-card" id="card-${mode}-${country.replace(/\s/g,'_')}">
+      <div class="country-header">
+        <div class="country-name">${flag} ${displayName}</div>
+        <div class="country-badge ${badgeClass}">${have}/${total}</div>
+      </div>
+      <div class="chips">${chipsHtml}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// ALBUM VIEW
+// ═══════════════════════════════════════════════
+function renderAlbum() {
+  const countries = REGIONS[currentRegion] || [];
+  const html = countries.map(c => renderCountryCard(c, 'album')).join('');
+  document.getElementById('mainContent').innerHTML = html || '<p style="padding:20px;color:#888;text-align:center">Sin países en esta región.</p>';
+}
+
+function switchRegion(region) {
+  currentRegion = region;
+  // Update tab active state
+  document.querySelectorAll('.region-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.textContent === region);
+  });
+  renderAlbum();
+}
+
+// ═══════════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════════
+function toggleSticker(country, index) {
+  appState.stickers[country][index] = !appState.stickers[country][index];
+  // If un-owning a sticker, also clear its duplicate flag
+  if (!appState.stickers[country][index]) {
+    appState.duplicates[country][index] = false;
+  }
+  saveState();
+  updateHeader();
+  // Re-render only the affected card for performance
+  const cardId = `card-album-${country.replace(/\s/g,'_')}`;
+  const cardEl = document.getElementById(cardId);
+  if (cardEl) cardEl.outerHTML = renderCountryCard(country, 'album');
+}
+
+function toggleDuplicate(country, index) {
+  // Only allowed if user owns the sticker
+  if (!appState.stickers[country][index]) return;
+  appState.duplicates[country][index] = !appState.duplicates[country][index];
+  saveState();
+  const cardId = `card-repetidas-${country.replace(/\s/g,'_')}`;
+  const cardEl = document.getElementById(cardId);
+  if (cardEl) {
+    const newHtml = renderCountryCard(country, 'repetidas');
+    if (newHtml) cardEl.outerHTML = newHtml;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PROGRESO VIEW
+// ═══════════════════════════════════════════════
+function renderProgreso() {
+  const total = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.length, 0);
+  const have  = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+  const need  = total - have;
+  const dups  = Object.values(appState.duplicates)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+
+  // Countries sorted by completion % descending
+  const sorted = Object.keys(appState.stickers).sort((a, b) => {
+    const pctA = appState.stickers[a].filter(Boolean).length / appState.stickers[a].length;
+    const pctB = appState.stickers[b].filter(Boolean).length / appState.stickers[b].length;
+    return pctB - pctA;
+  });
+
+  const rowsHtml = sorted.map(country => {
+    const s    = appState.stickers[country];
+    const h    = s.filter(Boolean).length;
+    const pct  = Math.round((h / s.length) * 100);
+    const fill = pct >= 75 ? '#22c55e' : pct >= 25 ? '#eab308' : '#ef4444';
+    const name = DISPLAY_NAMES[country] || country;
+    const flag = FLAGS[country] || '🏳️';
+    return `
+      <div class="progress-row">
+        <div class="progress-row-top">
+          <div class="progress-row-name">${flag} ${name}</div>
+          <div class="progress-row-pct">${h}/${s.length} · ${pct}%</div>
+        </div>
+        <div class="progress-row-bar">
+          <div class="progress-row-fill" style="width:${pct}%;background:${fill}"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number" style="color:#15803d">${have}</div>
+        <div class="stat-label">Tengo</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color:#dc2626">${need}</div>
+        <div class="stat-label">Me faltan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color:#1d4ed8">${dups}</div>
+        <div class="stat-label">Repetidas</div>
+      </div>
+    </div>
+    <div class="section-title">Por selección</div>
+    ${rowsHtml}`;
+}
+
+// ═══════════════════════════════════════════════
+// REPETIDAS VIEW
+// ═══════════════════════════════════════════════
+function renderRepetidas() {
+  // Show all regions, same structure as album but dup-mode
+  const allCountries = Object.values(REGIONS).flat();
+  const cards = allCountries.map(c => renderCountryCard(c, 'repetidas')).join('');
+  const dupCount = Object.values(appState.duplicates)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+
+  document.getElementById('mainContent').innerHTML =
+    `<p class="hint-text">Toca una lámina para marcarla como repetida 🔵</p>
+     <p class="hint-text" style="margin-bottom:8px">Total repetidas: <strong>${dupCount}</strong></p>
+     ${cards || '<p style="padding:20px;color:#888;text-align:center">Aún no tienes láminas.</p>'}`;
+}
+
+// ═══════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════
+function switchView(view) {
+  currentView = view;
+
+  // Update bottom nav
+  ['album','progreso','repetidas'].forEach(v => {
+    document.getElementById('nav' + v.charAt(0).toUpperCase() + v.slice(1))
+      .classList.toggle('active', v === view);
+  });
+
+  // Show/hide region tabs
+  document.getElementById('regionTabs').style.display =
+    view === 'album' ? 'flex' : 'none';
+
+  // Render the right content
+  if (view === 'album')          renderAlbum();
+  else if (view === 'progreso')  renderProgreso();
+  else if (view === 'repetidas') renderRepetidas();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+function init() {
+  appState = loadState();
+  updateHeader();
+  switchView('album');
+  switchRegion('FWC');
+}
+
+init();
 </script>
 </body>
 </html>
