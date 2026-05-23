@@ -492,7 +492,12 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  } catch(e) {
+    // Storage full or unavailable — state stays in memory for this session
+    console.warn('Could not save state to localStorage:', e);
+  }
 }
 
 // ═══════════════════════════════════════════════
