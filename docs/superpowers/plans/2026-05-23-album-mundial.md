@@ -1,0 +1,873 @@
+# Álbum Mundial 2026 — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a single-file mobile-first web app to track a FIFA World Cup 2026 Panini sticker album, hosted on GitHub Pages.
+
+**Architecture:** One `index.html` file with inline CSS and JavaScript. Initial sticker state hardcoded from Google Sheets. All user changes persisted in `localStorage` under key `awc_state`. Three views (Álbum / Progreso / Repetidas) rendered dynamically via JS into a `<main>` element.
+
+**Tech Stack:** Vanilla HTML5, CSS3, JavaScript (ES6+). No dependencies. GitHub Pages for hosting.
+
+---
+
+## File Map
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `index.html` | Create | The entire app — HTML structure, CSS, JS, data |
+
+---
+
+## Task 1: HTML Shell + CSS + Data Constants
+
+**Files:**
+- Create: `index.html`
+
+- [ ] **Step 1: Create `index.html` with full structure, CSS, and data**
+
+Write this complete file to `index.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Álbum Mundial 2026</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ── HEADER ─────────────────────────── */
+  #appHeader {
+    background: white;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .header-logo {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+  }
+  .header-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #111;
+    line-height: 1.2;
+  }
+  .header-subtitle {
+    font-size: 11px;
+    color: #888;
+    font-weight: 500;
+  }
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #15803d, #22c55e);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .progress-text {
+    font-size: 11px;
+    color: #666;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* ── REGION TABS ─────────────────────── */
+  #regionTabs {
+    background: white;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    overflow-x: auto;
+    padding: 0 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: sticky;
+    top: 75px;
+    z-index: 99;
+  }
+  #regionTabs::-webkit-scrollbar { display: none; }
+  .region-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .region-tab.active {
+    color: #111;
+    border-bottom-color: #111;
+  }
+
+  /* ── MAIN CONTENT ─────────────────────── */
+  #mainContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    padding-bottom: 80px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── COUNTRY CARD ─────────────────────── */
+  .country-card {
+    background: white;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .country-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .country-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .country-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .badge-high  { background: #f0fdf4; color: #15803d; }
+  .badge-mid   { background: #fefce8; color: #a16207; }
+  .badge-low   { background: #fef2f2; color: #dc2626; }
+
+  /* ── STICKER CIRCLES ─────────────────────── */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .chip {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    border: 2px solid transparent;
+  }
+  .chip:active { transform: scale(0.88); }
+  .chip.have    { background: #dcfce7; color: #15803d; border-color: #86efac; }
+  .chip.need    { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+  .chip.dup     { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+
+  /* ── PROGRESO VIEW ─────────────────────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: white;
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .stat-number {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: #888;
+    font-weight: 600;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 14px 0 8px;
+  }
+  .progress-row {
+    background: white;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .progress-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .progress-row-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111;
+  }
+  .progress-row-pct {
+    font-size: 12px;
+    font-weight: 700;
+    color: #555;
+  }
+  .progress-row-bar {
+    height: 5px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .progress-row-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #15803d, #22c55e);
+  }
+
+  /* ── REPETIDAS HINT ─────────────────────── */
+  .hint-text {
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+    padding: 12px 0 8px;
+    font-style: italic;
+  }
+
+  /* ── BOTTOM NAV ─────────────────────── */
+  #bottomNav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    border-top: 1px solid #eee;
+    display: flex;
+    padding: 6px 0 max(10px, env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+    z-index: 200;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s;
+  }
+  .nav-item:active { opacity: 0.6; }
+  .nav-icon { font-size: 22px; line-height: 1; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #bbb;
+    letter-spacing: 0.3px;
+  }
+  .nav-item.active .nav-label { color: #111; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="appHeader">
+  <div class="header-top">
+    <img class="header-logo"
+         src="https://www.fifplay.com/img/public/fifa-world-cup-2026-logo.png"
+         alt="FIFA World Cup 2026"
+         onerror="this.style.display='none'">
+    <div>
+      <div class="header-title">Álbum Mundial 2026</div>
+      <div class="header-subtitle" id="progressText">Cargando...</div>
+    </div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+</header>
+
+<!-- REGION TABS (shown only in Album view) -->
+<nav id="regionTabs">
+  <div class="region-tab active" onclick="switchRegion('FWC')">FWC</div>
+  <div class="region-tab" onclick="switchRegion('Américas')">Américas</div>
+  <div class="region-tab" onclick="switchRegion('Europa')">Europa</div>
+  <div class="region-tab" onclick="switchRegion('África')">África</div>
+  <div class="region-tab" onclick="switchRegion('Asia')">Asia</div>
+  <div class="region-tab" onclick="switchRegion('Oceanía')">Oceanía</div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main id="mainContent"></main>
+
+<!-- BOTTOM NAV -->
+<nav id="bottomNav">
+  <div class="nav-item active" id="navAlbum" onclick="switchView('album')">
+    <div class="nav-icon">⚽</div>
+    <div class="nav-label">Álbum</div>
+  </div>
+  <div class="nav-item" id="navProgreso" onclick="switchView('progreso')">
+    <div class="nav-icon">🏆</div>
+    <div class="nav-label">Progreso</div>
+  </div>
+  <div class="nav-item" id="navRepetidas" onclick="switchView('repetidas')">
+    <div class="nav-icon">🎴</div>
+    <div class="nav-label">Repetidas</div>
+  </div>
+</nav>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA — extracted from Google Sheets 2026-05-23
+// ═══════════════════════════════════════════════
+
+const INITIAL_STATE = {
+  stickers: {
+    "Japan": [false, true, true, false, false, false, false, true, true, false, false, true, false, false, false, false, true, false, false, false],
+    "Qatar": [false, false, false, true, false, true, false, false, false, true, false, false, true, false, false, false, false, false, true, false],
+    "Korea": [true, true, false, false, false, true, false, true, false, true, false, true, false, false, true, false, true, false, true, false],
+    "Saudi arabia": [true, true, true, false, false, true, false, true, false, true, false, true, false, false, true, false, false, false, true, false],
+    "Iran": [false, true, true, true, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, false],
+    "Iraq": [false, true, true, true, false, false, true, false, false, false, true, false, false, false, false, true, false, false, false, true],
+    "Jordan": [false, true, false, true, true, false, true, true, true, false, false, false, false, false, true, true, true, true, true, false],
+    "Uzbekistan": [true, true, false, false, false, true, true, false, false, true, true, false, false, true, true, true, false, false, false, true],
+    "Turkey": [false, false, true, true, true, false, false, true, false, true, true, true, true, true, true, false, true, true, false, true],
+    "Algeria": [false, false, true, true, false, true, true, true, false, true, true, true, true, false, true, true, false, false, true, true],
+    "Cabo Verde": [false, false, false, true, false, false, false, true, false, false, true, true, true, false, true, false, false, true, false, true],
+    "Congo DR": [true, true, true, true, true, false, true, false, false, true, true, false, false, false, false, false, false, false, false, false],
+    "Cote": [false, false, false, true, true, true, true, true, true, false, true, true, true, false, true, true, false, true, false, false],
+    "Egypt": [true, false, true, true, true, false, true, true, false, false, true, false, false, false, false, true, false, false, false, true],
+    "Ghana": [true, true, false, true, true, false, true, false, true, true, false, true, false, false, true, true, false, true, true, false],
+    "Morocco": [false, false, true, true, false, false, false, true, false, false, false, true, false, true, true, true, true, true, true, true],
+    "Tunisia": [true, false, true, false, true, false, false, false, false, true, true, true, false, false, true, true, true, true, true, true],
+    "Senegal": [true, true, false, false, false, true, false, false, true, true, false, true, false, true, true, false, false, false, true, false],
+    "South Africa": [true, false, false, false, false, false, false, false, false, true, false, false, false, false, true, false, true, false, true, false],
+    "Austria": [true, false, true, false, false, false, true, true, true, false, false, true, true, false, false, false, true, false, false, false],
+    "Belgium": [true, true, false, false, false, true, false, false, false, true, true, false, true, false, true, true, false, false, true, true],
+    "Bosnia": [false, false, false, true, false, false, false, false, false, false, false, true, true, false, true, true, true, true, true, true],
+    "Croatia": [false, true, false, false, false, true, false, false, false, true, true, false, false, false, true, true, false, false, false, false],
+    "Czechia": [false, false, false, false, true, false, true, false, false, true, true, false, true, true, false, false, true, true, false, false],
+    "England": [true, false, true, true, false, false, true, true, false, false, false, false, false, false, true, true, true, true, true, true],
+    "Germany": [false, true, false, false, true, false, true, true, false, true, false, true, true, true, true, false, true, false, true, true],
+    "France": [true, true, true, false, false, true, true, true, false, true, true, false, false, false, true, false, false, true, true, false],
+    "Netherlands": [false, true, false, true, false, false, false, true, false, false, false, true, false, false, false, false, false, false, false, false],
+    "Norway": [true, false, true, false, false, true, true, false, false, false, false, true, false, false, false, false, true, false, true, false],
+    "Portugal": [true, true, false, true, false, true, false, false, false, false, true, true, false, true, false, true, false, true, true, false],
+    "Scotland": [false, false, false, true, true, false, false, false, false, false, false, true, false, true, false, false, false, false, false, false],
+    "Spain": [false, true, false, true, false, true, false, true, false, false, false, true, false, true, false, false, true, true, false, false],
+    "Sweden": [true, false, true, false, true, false, true, false, false, true, false, false, true, false, true, false, false, true, false, false],
+    "Switzerland": [true, true, false, true, true, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true],
+    "Argentina": [false, true, false, true, true, false, true, true, true, false, true, true, false, true, false, true, true, true, false, true],
+    "Brazil": [false, false, false, true, true, false, false, true, true, false, false, false, false, true, true, false, false, false, true, false],
+    "Canada": [true, true, false, true, false, false, true, true, false, false, true, true, false, true, true, true, false, true, true, false],
+    "Colombia": [true, false, true, false, true, false, true, false, false, false, true, false, false, true, true, false, true, false, true, true],
+    "Ecuador": [false, true, false, true, false, true, true, false, true, true, false, true, true, true, true, false, true, true, true, true],
+    "Haiti": [false, true, true, true, false, true, true, false, false, false, true, true, true, false, false, false, true, false, false, true],
+    "Mexico": [true, true, true, true, false, true, false, true, false, true, true, true, true, false, true, false, false, false, true, false],
+    "Panama": [true, true, true, false, true, true, false, true, true, false, false, true, true, true, true, false, false, true, true, true],
+    "Paraguay": [false, false, false, true, false, false, true, true, false, false, true, true, false, false, false, true, true, true, true, false],
+    "Uruguay": [false, true, true, true, true, true, true, true, false, true, true, true, true, true, false, false, true, false, true, false],
+    "USA": [true, true, false, true, false, true, false, true, true, false, false, true, false, true, false, false, true, false, false, false],
+    "Australia": [true, true, true, false, true, false, true, false, true, true, true, false, false, true, true, false, false, true, false, true],
+    "New Zealand": [false, true, false, false, true, false, true, false, true, false, true, true, false, false, true, false, true, false, true, false],
+    "FWC": [true, false, true, false, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false],
+  },
+  duplicates: {
+    "Japan": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Qatar": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Korea": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Saudi arabia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Iran": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Iraq": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Jordan": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Uzbekistan": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Turkey": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Algeria": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Cabo Verde": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Congo DR": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Cote": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Egypt": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Ghana": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Morocco": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Tunisia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Senegal": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "South Africa": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Austria": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Belgium": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Bosnia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Croatia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Czechia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "England": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Germany": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "France": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Netherlands": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Norway": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Portugal": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Scotland": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Spain": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Sweden": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Switzerland": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Argentina": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Brazil": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Canada": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Colombia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Ecuador": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Haiti": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Mexico": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Panama": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Paraguay": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Uruguay": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "USA": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Australia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "New Zealand": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "FWC": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+  }
+};
+
+const REGIONS = {
+  "FWC":      ["FWC"],
+  "Américas": ["Argentina","Brazil","Canada","Colombia","Ecuador","Haiti","Mexico","Panama","Paraguay","Uruguay","USA"],
+  "Europa":   ["Austria","Belgium","Bosnia","Croatia","Czechia","England","Germany","France","Netherlands","Norway","Portugal","Scotland","Spain","Sweden","Switzerland"],
+  "África":   ["Algeria","Cabo Verde","Congo DR","Cote","Egypt","Ghana","Morocco","Tunisia","Senegal","South Africa"],
+  "Asia":     ["Japan","Qatar","Korea","Saudi arabia","Iran","Iraq","Jordan","Uzbekistan","Turkey"],
+  "Oceanía":  ["Australia","New Zealand"]
+};
+
+const FLAGS = {
+  "Japan":"🇯🇵","Qatar":"🇶🇦","Korea":"🇰🇷","Saudi arabia":"🇸🇦","Iran":"🇮🇷",
+  "Iraq":"🇮🇶","Jordan":"🇯🇴","Uzbekistan":"🇺🇿","Turkey":"🇹🇷","Algeria":"🇩🇿",
+  "Cabo Verde":"🇨🇻","Congo DR":"🇨🇩","Cote":"🇨🇮","Egypt":"🇪🇬","Ghana":"🇬🇭",
+  "Morocco":"🇲🇦","Tunisia":"🇹🇳","Senegal":"🇸🇳","South Africa":"🇿🇦","Austria":"🇦🇹",
+  "Belgium":"🇧🇪","Bosnia":"🇧🇦","Croatia":"🇭🇷","Czechia":"🇨🇿","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+  "Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Norway":"🇳🇴","Portugal":"🇵🇹",
+  "Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Spain":"🇪🇸","Sweden":"🇸🇪","Switzerland":"🇨🇭","Argentina":"🇦🇷",
+  "Brazil":"🇧🇷","Canada":"🇨🇦","Colombia":"🇨🇴","Ecuador":"🇪🇨","Haiti":"🇭🇹",
+  "Mexico":"🇲🇽","Panama":"🇵🇦","Paraguay":"🇵🇾","Uruguay":"🇺🇾","USA":"🇺🇸",
+  "Australia":"🇦🇺","New Zealand":"🇳🇿","FWC":"🌐"
+};
+
+const DISPLAY_NAMES = {
+  "Saudi arabia":"Arabia Saudita","Cote":"Côte d'Ivoire","South Africa":"Sudáfrica",
+  "New Zealand":"Nueva Zelanda","FWC":"FWC"
+};
+
+// ═══════════════════════════════════════════════
+// PLACEHOLDER — JS logic comes in Task 2
+// ═══════════════════════════════════════════════
+document.getElementById('mainContent').innerHTML =
+  '<p style="padding:20px;color:#888;text-align:center">App loading…</p>';
+</script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: Open `index.html` in a browser and verify**
+
+Open the file directly: `open index.html` (macOS) or drag into Chrome.
+
+Expected:
+- Header visible with FIFA logo (or blank space if image fails to load) + "Álbum Mundial 2026"
+- Progress bar visible (empty, 0%)
+- Region tabs visible: FWC | Américas | Europa | África | Asia | Oceanía
+- Bottom nav: ⚽ Álbum · 🏆 Progreso · 🎴 Repetidas
+- Body shows "App loading…" placeholder
+
+- [ ] **Step 3: Commit**
+
+```bash
+cd "/Users/felipemarquez/Documents/OE Claude Lab/awc"
+git init
+git add index.html
+git commit -m "feat: HTML shell, CSS, and sticker data constants"
+```
+
+---
+
+## Task 2: Álbum View — Render + Tabs + Toggle + localStorage
+
+**Files:**
+- Modify: `index.html` — replace the placeholder `<script>` block bottom section (everything after the `DISPLAY_NAMES` constant)
+
+- [ ] **Step 1: Replace the placeholder JS at the bottom of the `<script>` tag**
+
+Find this block in `index.html`:
+```js
+// ═══════════════════════════════════════════════
+// PLACEHOLDER — JS logic comes in Task 2
+// ═══════════════════════════════════════════════
+document.getElementById('mainContent').innerHTML =
+  '<p style="padding:20px;color:#888;text-align:center">App loading…</p>';
+```
+
+Replace it with:
+
+```js
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const STORAGE_KEY = 'awc_state';
+let appState = null;
+let currentView = 'album';
+let currentRegion = 'FWC';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // Deep-clone INITIAL_STATE so mutations don't affect the constant
+  return {
+    stickers:   JSON.parse(JSON.stringify(INITIAL_STATE.stickers)),
+    duplicates: JSON.parse(JSON.stringify(INITIAL_STATE.duplicates))
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+}
+
+// ═══════════════════════════════════════════════
+// HEADER
+// ═══════════════════════════════════════════════
+function updateHeader() {
+  const total = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.length, 0);               // 960
+  const have  = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+  const pct   = Math.round((have / total) * 100);
+
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent =
+    `${have} / ${total} láminas · ${pct}% completado`;
+}
+
+// ═══════════════════════════════════════════════
+// COUNTRY CARD
+// ═══════════════════════════════════════════════
+function renderCountryCard(country, mode) {
+  // mode: 'album' (toggle have/need) | 'repetidas' (toggle dup on owned stickers)
+  const stickers   = appState.stickers[country];
+  const duplicates = appState.duplicates[country];
+  const have  = stickers.filter(Boolean).length;
+  const total = stickers.length;
+  const pct   = have / total;
+
+  const badgeClass = pct >= 0.75 ? 'badge-high' : pct >= 0.25 ? 'badge-mid' : 'badge-low';
+  const displayName = DISPLAY_NAMES[country] || country;
+  const flag = FLAGS[country] || '🏳️';
+
+  // In 'repetidas' mode, only show stickers the user has
+  let chipsHtml = '';
+  for (let i = 0; i < total; i++) {
+    if (mode === 'repetidas' && !stickers[i]) continue; // skip not-owned in dup mode
+    const isDup  = duplicates[i];
+    const isHave = stickers[i];
+    const chipClass = mode === 'repetidas'
+      ? (isDup ? 'chip dup' : 'chip have')
+      : (isHave ? 'chip have' : 'chip need');
+    const handler = mode === 'repetidas'
+      ? `toggleDuplicate('${country}',${i})`
+      : `toggleSticker('${country}',${i})`;
+    chipsHtml += `<div class="${chipClass}" onclick="${handler}">${i + 1}</div>`;
+  }
+
+  if (mode === 'repetidas' && chipsHtml === '') return ''; // hide card if no owned stickers
+
+  return `
+    <div class="country-card" id="card-${mode}-${country.replace(/\s/g,'_')}">
+      <div class="country-header">
+        <div class="country-name">${flag} ${displayName}</div>
+        <div class="country-badge ${badgeClass}">${have}/${total}</div>
+      </div>
+      <div class="chips">${chipsHtml}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// ALBUM VIEW
+// ═══════════════════════════════════════════════
+function renderAlbum() {
+  const countries = REGIONS[currentRegion] || [];
+  const html = countries.map(c => renderCountryCard(c, 'album')).join('');
+  document.getElementById('mainContent').innerHTML = html || '<p style="padding:20px;color:#888;text-align:center">Sin países en esta región.</p>';
+}
+
+function switchRegion(region) {
+  currentRegion = region;
+  // Update tab active state
+  document.querySelectorAll('.region-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.textContent === region);
+  });
+  renderAlbum();
+}
+
+// ═══════════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════════
+function toggleSticker(country, index) {
+  appState.stickers[country][index] = !appState.stickers[country][index];
+  // If un-owning a sticker, also clear its duplicate flag
+  if (!appState.stickers[country][index]) {
+    appState.duplicates[country][index] = false;
+  }
+  saveState();
+  updateHeader();
+  // Re-render only the affected card for performance
+  const cardId = `card-album-${country.replace(/\s/g,'_')}`;
+  const cardEl = document.getElementById(cardId);
+  if (cardEl) cardEl.outerHTML = renderCountryCard(country, 'album');
+}
+
+function toggleDuplicate(country, index) {
+  // Only allowed if user owns the sticker
+  if (!appState.stickers[country][index]) return;
+  appState.duplicates[country][index] = !appState.duplicates[country][index];
+  saveState();
+  const cardId = `card-repetidas-${country.replace(/\s/g,'_')}`;
+  const cardEl = document.getElementById(cardId);
+  if (cardEl) {
+    const newHtml = renderCountryCard(country, 'repetidas');
+    if (newHtml) cardEl.outerHTML = newHtml;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PROGRESO VIEW
+// ═══════════════════════════════════════════════
+function renderProgreso() {
+  const total = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.length, 0);
+  const have  = Object.values(appState.stickers)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+  const need  = total - have;
+  const dups  = Object.values(appState.duplicates)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+
+  // Countries sorted by completion % descending
+  const sorted = Object.keys(appState.stickers).sort((a, b) => {
+    const pctA = appState.stickers[a].filter(Boolean).length / appState.stickers[a].length;
+    const pctB = appState.stickers[b].filter(Boolean).length / appState.stickers[b].length;
+    return pctB - pctA;
+  });
+
+  const rowsHtml = sorted.map(country => {
+    const s    = appState.stickers[country];
+    const h    = s.filter(Boolean).length;
+    const pct  = Math.round((h / s.length) * 100);
+    const fill = pct >= 75 ? '#22c55e' : pct >= 25 ? '#eab308' : '#ef4444';
+    const name = DISPLAY_NAMES[country] || country;
+    const flag = FLAGS[country] || '🏳️';
+    return `
+      <div class="progress-row">
+        <div class="progress-row-top">
+          <div class="progress-row-name">${flag} ${name}</div>
+          <div class="progress-row-pct">${h}/${s.length} · ${pct}%</div>
+        </div>
+        <div class="progress-row-bar">
+          <div class="progress-row-fill" style="width:${pct}%;background:${fill}"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number" style="color:#15803d">${have}</div>
+        <div class="stat-label">Tengo</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color:#dc2626">${need}</div>
+        <div class="stat-label">Me faltan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color:#1d4ed8">${dups}</div>
+        <div class="stat-label">Repetidas</div>
+      </div>
+    </div>
+    <div class="section-title">Por selección</div>
+    ${rowsHtml}`;
+}
+
+// ═══════════════════════════════════════════════
+// REPETIDAS VIEW
+// ═══════════════════════════════════════════════
+function renderRepetidas() {
+  // Show all regions, same structure as album but dup-mode
+  const allCountries = Object.values(REGIONS).flat();
+  const cards = allCountries.map(c => renderCountryCard(c, 'repetidas')).join('');
+  const dupCount = Object.values(appState.duplicates)
+    .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
+
+  document.getElementById('mainContent').innerHTML =
+    `<p class="hint-text">Toca una lámina para marcarla como repetida 🔵</p>
+     <p class="hint-text" style="margin-bottom:8px">Total repetidas: <strong>${dupCount}</strong></p>
+     ${cards || '<p style="padding:20px;color:#888;text-align:center">Aún no tienes láminas.</p>'}`;
+}
+
+// ═══════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════
+function switchView(view) {
+  currentView = view;
+
+  // Update bottom nav
+  ['album','progreso','repetidas'].forEach(v => {
+    document.getElementById('nav' + v.charAt(0).toUpperCase() + v.slice(1))
+      .classList.toggle('active', v === view);
+  });
+
+  // Show/hide region tabs
+  document.getElementById('regionTabs').style.display =
+    view === 'album' ? 'flex' : 'none';
+
+  // Render the right content
+  if (view === 'album')     renderAlbum();
+  else if (view === 'progreso')  renderProgreso();
+  else if (view === 'repetidas') renderRepetidas();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+function init() {
+  appState = loadState();
+  updateHeader();
+  switchView('album');
+  switchRegion('FWC');
+}
+
+init();
+```
+
+- [ ] **Step 2: Open `index.html` in browser and verify Album view**
+
+Expected:
+- FWC tab active by default, shows FWC country card with 9 green circles and 11 red circles (rows 1-20, FWC data)
+- Tap a green circle → turns red; tap again → turns green
+- Switch to "Américas" tab → shows 11 country cards (Argentina, Brazil, etc.)
+- Refresh page → circles remain in same state (localStorage working)
+- Progress bar and counter update after each tap
+
+- [ ] **Step 3: Verify localStorage in browser console**
+
+Open DevTools (F12) → Console, run:
+```js
+JSON.parse(localStorage.getItem('awc_state')).stickers['FWC']
+// Expected: array of 20 booleans matching current visual state
+```
+
+- [ ] **Step 4: Verify Progreso and Repetidas views**
+
+- Tap "🏆 Progreso" → shows 3 stat cards (Tengo / Me faltan / Repetidas) + sorted country list
+- Tap "🎴 Repetidas" → shows hint text + all country cards in blue-mode
+- Tap a circle in Repetidas → turns blue; tap again → turns green (un-dup)
+- Only circles the user owns are shown in Repetidas
+- Tap "⚽ Álbum" → returns to album, region tabs reappear
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add index.html
+git commit -m "feat: complete album tracker — album/progreso/repetidas views with localStorage"
+```
+
+---
+
+## Task 3: Deploy to GitHub Pages
+
+**Files:**
+- Create: `.gitignore`
+
+- [ ] **Step 1: Create `.gitignore`**
+
+```
+.superpowers/
+.DS_Store
+```
+
+- [ ] **Step 2: Create GitHub repository**
+
+Go to https://github.com/new and create a public repo named `album-mundial-2026`. Then:
+
+```bash
+cd "/Users/felipemarquez/Documents/OE Claude Lab/awc"
+git remote add origin https://github.com/YOUR_USERNAME/album-mundial-2026.git
+git branch -M main
+git add .gitignore
+git commit -m "chore: add gitignore"
+git push -u origin main
+```
+
+- [ ] **Step 3: Enable GitHub Pages**
+
+1. Go to the repo on GitHub → **Settings** → **Pages**
+2. Source: **Deploy from a branch**
+3. Branch: **main** · Folder: **/ (root)**
+4. Click **Save**
+
+Wait ~60 seconds, then the app will be live at:
+`https://YOUR_USERNAME.github.io/album-mundial-2026/`
+
+- [ ] **Step 4: Open on phone and verify**
+
+Open the URL on your phone browser. Expected:
+- App loads with FIFA logo and progress bar
+- All 6 region tabs scroll horizontally
+- Circles are tappable and state persists on reload
+- Bottom nav switches between Album / Progreso / Repetidas correctly
+- No horizontal overflow on mobile (375px screen)
