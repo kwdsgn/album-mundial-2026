@@ -322,7 +322,11 @@
 
 <!-- BOTTOM NAV -->
 <nav id="bottomNav">
-  <div class="nav-item active" id="navAlbum" onclick="switchView('album')">
+  <div class="nav-item active" id="navGrupos" onclick="switchView('grupos')">
+    <div class="nav-icon">🌐</div>
+    <div class="nav-label">Grupos</div>
+  </div>
+  <div class="nav-item" id="navAlbum" onclick="switchView('album')">
     <div class="nav-icon">⚽</div>
     <div class="nav-label">Álbum</div>
   </div>
@@ -390,6 +394,7 @@ const INITIAL_STATE = {
     "USA": [false, false, true, false, true, false, true, false, false, true, true, false, true, false, true, true, false, true, true, true],
     "Australia": [false, false, false, true, false, true, false, true, false, false, false, true, true, false, false, true, true, false, true, false],
     "New Zealand": [true, false, true, true, false, true, false, true, false, true, false, false, true, true, false, true, false, true, false, true],
+    "Curacao": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
     "FWC": [false, true, false, true, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true],
   },
   duplicates: {
@@ -440,13 +445,14 @@ const INITIAL_STATE = {
     "USA": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
     "Australia": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
     "New Zealand": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
+    "Curacao": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
     "FWC": [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],
   }
 };
 
 const REGIONS = {
   "FWC":      ["FWC"],
-  "Américas": ["Argentina","Brazil","Canada","Colombia","Ecuador","Haiti","Mexico","Panama","Paraguay","Uruguay","USA"],
+  "Américas": ["Argentina","Brazil","Canada","Colombia","Curacao","Ecuador","Haiti","Mexico","Panama","Paraguay","Uruguay","USA"],
   "Europa":   ["Austria","Belgium","Bosnia","Croatia","Czechia","England","Germany","France","Netherlands","Norway","Portugal","Scotland","Spain","Sweden","Switzerland"],
   "África":   ["Algeria","Cabo Verde","Congo DR","Cote","Egypt","Ghana","Morocco","Tunisia","Senegal","South Africa"],
   "Asia":     ["Japan","Qatar","Korea","Saudi arabia","Iran","Iraq","Jordan","Uzbekistan","Turkey"],
@@ -463,12 +469,42 @@ const FLAGS = {
   "Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Spain":"🇪🇸","Sweden":"🇸🇪","Switzerland":"🇨🇭","Argentina":"🇦🇷",
   "Brazil":"🇧🇷","Canada":"🇨🇦","Colombia":"🇨🇴","Ecuador":"🇪🇨","Haiti":"🇭🇹",
   "Mexico":"🇲🇽","Panama":"🇵🇦","Paraguay":"🇵🇾","Uruguay":"🇺🇾","USA":"🇺🇸",
-  "Australia":"🇦🇺","New Zealand":"🇳🇿","FWC":"🌐"
+  "Australia":"🇦🇺","New Zealand":"🇳🇿","Curacao":"🇨🇼","FWC":"🌐"
 };
 
 const DISPLAY_NAMES = {
-  "Saudi arabia":"Arabia Saudita","Cote":"Côte d'Ivoire","South Africa":"Sudáfrica",
-  "New Zealand":"Nueva Zelanda","FWC":"FWC"
+  "Japan":"Japón - JPN","Qatar":"Qatar - QAT","Korea":"Corea del Sur - KOR",
+  "Saudi arabia":"Arabia Saudita - KSA","Iran":"Irán - IRN","Iraq":"Irak - IRQ",
+  "Jordan":"Jordania - JOR","Uzbekistan":"Uzbekistán - UZB","Turkey":"Turquía - TUR",
+  "Algeria":"Argelia - ALG","Cabo Verde":"Cabo Verde - CPV","Congo DR":"Congo DR - COD",
+  "Cote":"Costa de Marfil - CIV","Egypt":"Egipto - EGY","Ghana":"Ghana - GHA",
+  "Morocco":"Marruecos - MAR","Tunisia":"Túnez - TUN","Senegal":"Senegal - SEN",
+  "South Africa":"Sudáfrica - RSA","Austria":"Austria - AUT","Belgium":"Bélgica - BEL",
+  "Bosnia":"Bosnia - BIH","Croatia":"Croacia - CRO","Czechia":"Chequia - CZE",
+  "England":"Inglaterra - ENG","Germany":"Alemania - GER","France":"Francia - FRA",
+  "Netherlands":"Holanda - NED","Norway":"Noruega - NOR","Portugal":"Portugal - POR",
+  "Scotland":"Escocia - SCO","Spain":"España - ESP","Sweden":"Suecia - SWE",
+  "Switzerland":"Suiza - SUI","Argentina":"Argentina - ARG","Brazil":"Brasil - BRA",
+  "Canada":"Canadá - CAN","Colombia":"Colombia - COL","Curacao":"Curaçao - CUW",
+  "Ecuador":"Ecuador - ECU","Haiti":"Haití - HAI","Mexico":"México - MEX",
+  "Panama":"Panamá - PAN","Paraguay":"Paraguay - PAR","Uruguay":"Uruguay - URU",
+  "USA":"EE.UU. - USA","Australia":"Australia - AUS","New Zealand":"Nueva Zelanda - NZL",
+  "FWC":"FWC"
+};
+
+const GROUPS = {
+  "A": ["Mexico","South Africa","Korea","Czechia"],
+  "B": ["Canada","Bosnia","Qatar","Switzerland"],
+  "C": ["Brazil","Morocco","Haiti","Scotland"],
+  "D": ["USA","Paraguay","Australia","Turkey"],
+  "E": ["Germany","Curacao","Cote","Ecuador"],
+  "F": ["Netherlands","Japan","Sweden","Tunisia"],
+  "G": ["Belgium","Egypt","Iran","New Zealand"],
+  "H": ["Spain","Cabo Verde","Saudi arabia","Uruguay"],
+  "I": ["France","Senegal","Iraq","Norway"],
+  "J": ["Argentina","Algeria","Austria","Jordan"],
+  "K": ["Portugal","Congo DR","Uzbekistan","Colombia"],
+  "L": ["England","Croatia","Ghana","Panama"]
 };
 
 // ═══════════════════════════════════════════════
@@ -679,13 +715,25 @@ function renderRepetidas() {
 }
 
 // ═══════════════════════════════════════════════
+// GRUPOS VIEW
+// ═══════════════════════════════════════════════
+function renderGrupos() {
+  let html = '';
+  for (const [letter, countries] of Object.entries(GROUPS)) {
+    const cards = countries.map(c => renderCountryCard(c, 'album')).join('');
+    html += `<div class="section-title">Grupo ${letter}</div>${cards}`;
+  }
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
 // VIEW SWITCHING
 // ═══════════════════════════════════════════════
 function switchView(view) {
   currentView = view;
 
   // Update bottom nav
-  ['album','progreso','repetidas'].forEach(v => {
+  ['grupos','album','progreso','repetidas'].forEach(v => {
     document.getElementById('nav' + v.charAt(0).toUpperCase() + v.slice(1))
       .classList.toggle('active', v === view);
   });
@@ -695,7 +743,8 @@ function switchView(view) {
     view === 'album' ? 'flex' : 'none';
 
   // Render the right content
-  if (view === 'album')          renderAlbum();
+  if (view === 'grupos')         renderGrupos();
+  else if (view === 'album')     renderAlbum();
   else if (view === 'progreso')  renderProgreso();
   else if (view === 'repetidas') renderRepetidas();
 }
@@ -706,8 +755,7 @@ function switchView(view) {
 function init() {
   appState = loadState();
   updateHeader();
-  switchView('album');
-  switchRegion('FWC');
+  switchView('grupos');
 }
 
 init();
