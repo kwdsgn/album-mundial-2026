@@ -262,11 +262,12 @@
   }
   .group-header:active { opacity: 0.8; }
   .group-label {
-    font-size: 14px;
+    font-size: 22px;
     font-weight: 800;
     color: #111;
     white-space: nowrap;
-    min-width: 60px;
+    min-width: 28px;
+    text-align: center;
   }
   .group-codes {
     flex: 1;
@@ -790,7 +791,7 @@ function renderGrupos() {
     html += `
       <div class="group-accordion${isOpen ? ' open' : ''}">
         <div class="group-header" onclick="toggleGroup('${letter}')">
-          <span class="group-label">Grupo ${letter}</span>
+          <span class="group-label">${letter}</span>
           <span class="group-codes">${codes}</span>
           <span class="group-chevron">▶</span>
         </div>
