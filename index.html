@@ -766,12 +766,14 @@ function renderRepetidas() {
 // ═══════════════════════════════════════════════
 // GRUPOS VIEW
 // ═══════════════════════════════════════════════
-let currentGroup = 'A';
+let currentGroup = null;
 
 function getCode(country) {
   const display = DISPLAY_NAMES[country] || country;
   const dash = display.lastIndexOf(' - ');
-  return dash !== -1 ? display.substring(dash + 3) : display.substring(0, 3).toUpperCase();
+  const code = dash !== -1 ? display.substring(dash + 3) : display.substring(0, 3).toUpperCase();
+  const flag = FLAGS[country] || '';
+  return `${flag} ${code}`;
 }
 
 function toggleGroup(letter) {
