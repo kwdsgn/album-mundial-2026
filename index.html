@@ -240,6 +240,55 @@
     background: linear-gradient(90deg, #15803d, #22c55e);
   }
 
+  /* ── GRUPOS ACCORDION ───────────────────── */
+  .group-accordion {
+    margin-bottom: 6px;
+  }
+  .group-header {
+    background: white;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .group-accordion.open .group-header {
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .group-header:active { opacity: 0.8; }
+  .group-label {
+    font-size: 14px;
+    font-weight: 800;
+    color: #111;
+    white-space: nowrap;
+    min-width: 60px;
+  }
+  .group-codes {
+    flex: 1;
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    letter-spacing: 0.2px;
+  }
+  .group-chevron {
+    font-size: 11px;
+    color: #aaa;
+    transition: transform 0.2s;
+  }
+  .group-accordion.open .group-chevron {
+    transform: rotate(90deg);
+  }
+  .group-body {
+    background: #f0f0f0;
+    border-radius: 0 0 12px 12px;
+    padding: 8px;
+  }
+
   /* ── REPETIDAS HINT ─────────────────────── */
   .hint-text {
     font-size: 12px;
@@ -717,11 +766,34 @@ function renderRepetidas() {
 // ═══════════════════════════════════════════════
 // GRUPOS VIEW
 // ═══════════════════════════════════════════════
+let currentGroup = 'A';
+
+function getCode(country) {
+  const display = DISPLAY_NAMES[country] || country;
+  const dash = display.lastIndexOf(' - ');
+  return dash !== -1 ? display.substring(dash + 3) : display.substring(0, 3).toUpperCase();
+}
+
+function toggleGroup(letter) {
+  currentGroup = currentGroup === letter ? null : letter;
+  renderGrupos();
+}
+
 function renderGrupos() {
   let html = '';
   for (const [letter, countries] of Object.entries(GROUPS)) {
-    const cards = countries.map(c => renderCountryCard(c, 'album')).join('');
-    html += `<div class="section-title">Grupo ${letter}</div>${cards}`;
+    const isOpen = currentGroup === letter;
+    const codes = countries.map(getCode).join(' · ');
+    const cards = isOpen ? countries.map(c => renderCountryCard(c, 'album')).join('') : '';
+    html += `
+      <div class="group-accordion${isOpen ? ' open' : ''}">
+        <div class="group-header" onclick="toggleGroup('${letter}')">
+          <span class="group-label">Grupo ${letter}</span>
+          <span class="group-codes">${codes}</span>
+          <span class="group-chevron">▶</span>
+        </div>
+        ${isOpen ? `<div class="group-body">${cards}</div>` : ''}
+      </div>`;
   }
   document.getElementById('mainContent').innerHTML = html;
 }
