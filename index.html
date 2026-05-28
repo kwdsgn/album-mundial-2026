@@ -566,15 +566,26 @@ let currentView = 'album';
 let currentRegion = 'FWC';
 
 function loadState() {
+  let state = null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) state = JSON.parse(raw);
   } catch(e) {}
-  // Deep-clone INITIAL_STATE so mutations don't affect the constant
-  return {
-    stickers:   JSON.parse(JSON.stringify(INITIAL_STATE.stickers)),
-    duplicates: JSON.parse(JSON.stringify(INITIAL_STATE.duplicates))
-  };
+
+  if (!state) {
+    return {
+      stickers:   JSON.parse(JSON.stringify(INITIAL_STATE.stickers)),
+      duplicates: JSON.parse(JSON.stringify(INITIAL_STATE.duplicates))
+    };
+  }
+
+  // Merge any countries added after the last save (e.g. Curaçao)
+  for (const country of Object.keys(INITIAL_STATE.stickers)) {
+    if (!state.stickers[country])   state.stickers[country]   = [...INITIAL_STATE.stickers[country]];
+    if (!state.duplicates[country]) state.duplicates[country] = [...INITIAL_STATE.duplicates[country]];
+  }
+
+  return state;
 }
 
 function saveState() {
