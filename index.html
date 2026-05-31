@@ -816,8 +816,8 @@ function buildRepetidosText() {
       const nums = dups.map((d, i) => d ? i + 1 : null).filter(Boolean);
       if (!nums.length) continue;
       const flag = FLAGS[country] || '';
-      const name = getSpanishName(country);
-      lines.push(`${flag} ${name}: ${nums.join(', ')}`);
+      const code = getCode(country).trim().split(' ').pop(); // just the 3-letter code
+      lines.push(`${flag} ${code}: ${nums.join(', ')}`);
       total += nums.length;
     }
     if (lines.length) sections.push(`Grupo ${letter}\n${lines.join('\n')}`);
