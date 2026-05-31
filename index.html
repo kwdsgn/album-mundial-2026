@@ -298,6 +298,43 @@
     padding: 12px 0 8px;
     font-style: italic;
   }
+  .share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px;
+    background: #111;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 14px;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s;
+  }
+  .share-btn:active { opacity: 0.75; }
+  .share-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.82);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .share-toast.show { opacity: 1; }
 
   /* ── BOTTOM NAV ─────────────────────── */
   #bottomNav {
@@ -369,6 +406,7 @@
 
 <!-- MAIN CONTENT -->
 <main id="mainContent"></main>
+<div class="share-toast" id="shareToast"></div>
 
 <!-- BOTTOM NAV -->
 <nav id="bottomNav">
@@ -762,16 +800,53 @@ function renderProgreso() {
 // ═══════════════════════════════════════════════
 // REPETIDAS VIEW
 // ═══════════════════════════════════════════════
+function buildRepetidosText() {
+  const allCountries = Object.values(REGIONS).flat();
+  const lines = [];
+  for (const country of allCountries) {
+    const dups = appState.duplicates[country];
+    const nums = dups.map((d, i) => d ? i + 1 : null).filter(Boolean);
+    if (!nums.length) continue;
+    const display = DISPLAY_NAMES[country] || country;
+    const flag    = FLAGS[country] || '';
+    lines.push(`${flag} ${display}: ${nums.join(', ')}`);
+  }
+  const total = lines.reduce((s, l) => s + (l.match(/,/g) || []).length + 1, 0);
+  return `🎴 Repetidas — Álbum Mundial 2026\n\n${lines.join('\n')}\n\nTotal: ${total} láminas`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('shareToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function exportRepetidas() {
+  const text = buildRepetidosText();
+  if (navigator.share) {
+    navigator.share({ title: 'Mis repetidas — Mundial 2026', text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('¡Copiado al portapapeles! 📋'))
+      .catch(() => showToast('No se pudo copiar'));
+  }
+}
+
 function renderRepetidas() {
-  // Show all regions, same structure as album but dup-mode
   const allCountries = Object.values(REGIONS).flat();
   const cards = allCountries.map(c => renderCountryCard(c, 'repetidas')).join('');
   const dupCount = Object.values(appState.duplicates)
     .reduce((sum, arr) => sum + arr.filter(Boolean).length, 0);
 
+  const shareBtn = dupCount > 0
+    ? `<button class="share-btn" onclick="exportRepetidas()">📤 Compartir lista de repetidas</button>`
+    : '';
+
   document.getElementById('mainContent').innerHTML =
     `<p class="hint-text">Toca una lámina para marcarla como repetida 🔵</p>
      <p class="hint-text" style="margin-bottom:8px">Total repetidas: <strong>${dupCount}</strong></p>
+     ${shareBtn}
      ${cards || '<p style="padding:20px;color:#888;text-align:center">Aún no tienes láminas.</p>'}`;
 }
 
