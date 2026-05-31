@@ -800,19 +800,29 @@ function renderProgreso() {
 // ═══════════════════════════════════════════════
 // REPETIDAS VIEW
 // ═══════════════════════════════════════════════
+function getSpanishName(country) {
+  const display = DISPLAY_NAMES[country] || country;
+  const dash = display.lastIndexOf(' - ');
+  return dash !== -1 ? display.substring(0, dash) : display;
+}
+
 function buildRepetidosText() {
-  const allCountries = Object.values(REGIONS).flat();
-  const lines = [];
-  for (const country of allCountries) {
-    const dups = appState.duplicates[country];
-    const nums = dups.map((d, i) => d ? i + 1 : null).filter(Boolean);
-    if (!nums.length) continue;
-    const display = DISPLAY_NAMES[country] || country;
-    const flag    = FLAGS[country] || '';
-    lines.push(`${flag} ${display}: ${nums.join(', ')}`);
+  const sections = [];
+  let total = 0;
+  for (const [letter, countries] of Object.entries(GROUPS)) {
+    const lines = [];
+    for (const country of countries) {
+      const dups = appState.duplicates[country] || [];
+      const nums = dups.map((d, i) => d ? i + 1 : null).filter(Boolean);
+      if (!nums.length) continue;
+      const flag = FLAGS[country] || '';
+      const name = getSpanishName(country);
+      lines.push(`${flag} ${name}: ${nums.join(', ')}`);
+      total += nums.length;
+    }
+    if (lines.length) sections.push(`Grupo ${letter}\n${lines.join('\n')}`);
   }
-  const total = lines.reduce((s, l) => s + (l.match(/,/g) || []).length + 1, 0);
-  return `🎴 Repetidas — Álbum Mundial 2026\n\n${lines.join('\n')}\n\nTotal: ${total} láminas`;
+  return `🎴 Mis repetidas — Mundial 2026\n\n${sections.join('\n\n')}\n\nTotal: ${total} láminas`;
 }
 
 function showToast(msg) {
